@@ -23,6 +23,10 @@ import random
 import argparse
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+
 import numpy as np
 from PIL import Image
 
@@ -225,6 +229,37 @@ def set_seed(seed: int):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+class IOUMeter:
+    """Computes the intersection over union (IoU) per class and mean IoU."""
+    def __init__(self, num_classes):
+        self.num_classes = num_classes
+        self.hist = np.zeros((num_classes, num_classes))
+
+    def _fast_hist(self, label_true, label_pred):
+        mask = (label_true >= 0) & (label_true < self.num_classes)
+        hist = np.bincount(
+            self.num_classes * label_true[mask].astype(int) +
+            label_pred[mask], minlength=self.num_classes ** 2).reshape(self.num_classes, self.num_classes)
+        return hist
+
+    def add(self, predicted, target):
+        """Add batch results to the meter."""
+        # predicted: (N, H, W), target: (N, H, W)
+        # Convert to numpy and flatten
+        p = predicted.cpu().numpy().flatten()
+        t = target.cpu().numpy().flatten()
+        self.hist += self._fast_hist(t, p)
+
+    def value(self):
+        """Returns tuple: (mean_iou, class_iou_list)"""
+        numerator = np.diag(self.hist)
+        denominator = self.hist.sum(axis=1) + self.hist.sum(axis=0) - np.diag(self.hist)
+        
+        # Avoid division by zero
+        iou = numerator / (denominator + 1e-6)
+        mean_iou = np.nanmean(iou)
+        return mean_iou, iou
+    
 
 def compute_class_weights(dataloader, num_classes: int, device: str):
     """Compute inverse frequency class weights from training data"""
@@ -288,13 +323,15 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
     return total_loss / num_batches
 
 
-def validate(model, dataloader, criterion, device):
+def validate(model, dataloader, criterion, device, num_classes):
     """Validate model"""
     model.eval()
     total_loss = 0.0
     num_batches = 0
     correct = 0
     total = 0
+
+    iou_meter = IOUMeter(num_classes)
 
     with torch.no_grad():
         for x, y in dataloader:
@@ -312,10 +349,49 @@ def validate(model, dataloader, criterion, device):
             correct += (preds == y).sum().item()
             total += y.numel()
 
+            # Update IoU meter
+            iou_meter.add(preds, y)
+            
+
     avg_loss = total_loss / num_batches
     accuracy = correct / total
-    return avg_loss, accuracy
+    # Calculate final IoU scores
+    mean_iou, class_iou = iou_meter.value()
+    return avg_loss, accuracy, mean_iou, class_iou
 
+def save_confusion_matrix(model, dataloader, device, save_path, class_names=None):
+    """Generates and saves a confusion matrix heatmap"""
+    print("Generating confusion matrix...")
+    model.eval()
+    all_preds = []
+    all_targets = []
+    
+    with torch.no_grad():
+        for x, y in dataloader:
+            x = x.to(device)
+            # Get predictions
+            logits = model(x)
+            preds = torch.argmax(logits, dim=1).cpu().numpy()
+            targets = y.cpu().numpy()
+            
+            # Flatten spatial dimensions (N, H, W) -> (N*H*W)
+            all_preds.extend(preds.flatten())
+            all_targets.extend(targets.flatten())
+
+    # Compute Matrix
+    cm = confusion_matrix(all_targets, all_preds, normalize='true')
+    
+    # Plotting
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='.2f', cmap='Blues',
+                xticklabels=class_names, yticklabels=class_names)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Normalized Confusion Matrix')
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+    print(f"Confusion matrix saved to {save_path}")
 
 def train_model(model_name: str, config: Config):
     """Main training function"""
@@ -396,7 +472,7 @@ def train_model(model_name: str, config: Config):
         train_loss = train_epoch(model, train_loader, criterion, optimizer, config.DEVICE)
 
         # Validate
-        val_loss, val_acc = validate(model, val_loader, criterion, config.DEVICE)
+        val_loss, val_acc, val_miou, val_class_iou = validate(model, val_loader, criterion, config.DEVICE, config.NUM_CLASSES)
 
         epoch_time = time.time() - epoch_start
 
@@ -404,12 +480,14 @@ def train_model(model_name: str, config: Config):
         history['train_loss'].append(train_loss)
         history['val_loss'].append(val_loss)
         history['val_acc'].append(val_acc)
+        history['val_miou'].append(val_miou)
         history['epoch_times'].append(epoch_time)
 
         print(f"Epoch {epoch:2d}/{config.EPOCHS} | "
               f"Train Loss: {train_loss:.4f} | "
               f"Val Loss: {val_loss:.4f} | "
               f"Val Acc: {val_acc:.4f} | "
+              f"mIoU: {val_miou:.4f} | "
               f"Time: {epoch_time:.1f}s")
 
         # Save best model
@@ -469,6 +547,34 @@ def train_model(model_name: str, config: Config):
     with open(summary_path, 'w') as f:
         json.dump(summary, f, indent=2)
 
+    #Load the best model weights
+    print(f"\nLoading best model for evaluation...")
+    checkpoint = torch.load(os.path.join(model_dir, f"{model_name}_best.pth"))
+    model.load_state_dict(checkpoint['model_state_dict'])
+
+    #Define class names (Adjust these based on your specific xView2 classes)
+    # Usually: 0=Background, 1=No Damage, 2=Minor, 3=Major, 4=Destroyed
+    class_names = ["Back", "No Dam", "Minor", "Major", "Destr"]
+    
+    #Generate Matrix
+    cm_path = os.path.join(model_dir, f"{model_name}_confusion_matrix.png")
+    save_confusion_matrix(model, val_loader, config.DEVICE, cm_path, class_names)
+    # ----------------------
+
+    # 2. Run one final validation to get per-class scores
+    # (Using the updated validate function that returns val_class_iou)
+    _, _, _, val_class_iou = validate(
+        model, val_loader, criterion, config.DEVICE, config.NUM_CLASSES
+    )
+
+    # 3. Save to a specific "best_metrics.json" file
+    best_metrics = {
+        "model_name": model_name,
+        "class_iou": val_class_iou.tolist()  # Convert numpy array to list
+    }
+    
+    with open(os.path.join(model_dir, f"{model_name}_best_metrics.json"), "w") as f:
+        json.dump(best_metrics, f, indent=2)
     print(f"\n{'='*80}")
     print(f"Training Complete!")
     print(f"{'='*80}")
