@@ -35,7 +35,7 @@ from torch.utils.data import Dataset, DataLoader
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'code'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'models'))
 
-from unet_model import UNet
+from unet import UNet
 from fcn import FCN8s
 from deeplabv3plus import DeepLabV3Plus
 
