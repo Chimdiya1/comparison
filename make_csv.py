@@ -1,8 +1,8 @@
 import csv
 from pathlib import Path
 
-TILES_MANIFEST = Path("/Users/chimdiaanyiam/Desktop/school/dissertation/train/tiles_256/tiles_manifest.csv")
-OUT_DIR = Path("/Users/chimdiaanyiam/Desktop/school/dissertation/train/tiles_256")
+TILES_MANIFEST = Path("/content/train/tiles_256/tiles_manifest.csv")
+OUT_DIR = Path("/content/train/tiles_256")
 
 def write_split_csv(split_name: str, out_path: Path):
     with open(TILES_MANIFEST, "r", newline="") as f_in, open(out_path, "w", newline="") as f_out:

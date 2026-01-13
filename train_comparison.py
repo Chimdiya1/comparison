@@ -47,11 +47,11 @@ class Config:
     """Training configuration - IDENTICAL for all models"""
 
     # Data paths
-    TRAIN_CSV = "/Users/chimdiaanyiam/Desktop/school/dissertation/train/tiles_256/train_tiles_balanced.csv"
-    VAL_CSV = "/Users/chimdiaanyiam/Desktop/school/dissertation/train/tiles_256/val_tiles.csv"
+    TRAIN_CSV = "/content/train/tiles_256/train_tiles_balanced.csv"
+    VAL_CSV = "/content/train/tiles_256/val_tiles.csv"
 
     # Output directory
-    OUT_DIR = "/Users/chimdiaanyiam/Desktop/school/dissertation/assessment/results"
+    OUT_DIR = "/content/assessment/results"
 
     # Model parameters
     NUM_CLASSES = 5
