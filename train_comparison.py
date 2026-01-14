@@ -572,7 +572,7 @@ def train_model(model_name: str, config: Config):
 
     # 2. Run one final validation to get per-class scores
     # (Using the updated validate function that returns val_class_iou)
-    _, _, _, val_class_iou = validate(
+    _, _, _, val_class_iou, _, _ = validate(
         model, val_loader, criterion, config.DEVICE, config.NUM_CLASSES
     )
 
