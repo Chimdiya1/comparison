@@ -258,7 +258,12 @@ class IOUMeter:
         # Avoid division by zero
         iou = numerator / (denominator + 1e-6)
         mean_iou = np.nanmean(iou)
-        return mean_iou, iou
+
+        # F1 calculation (Dice Coefficient)
+        # Relationship: F1 = (2 * IoU) / (1 + IoU)
+        f1 = (2 * iou) / (iou + 1 + 1e-6)
+        mean_f1 = np.nanmean(f1)
+        return mean_iou, iou, mean_f1, f1
     
 
 def compute_class_weights(dataloader, num_classes: int, device: str):
@@ -356,8 +361,8 @@ def validate(model, dataloader, criterion, device, num_classes):
     avg_loss = total_loss / num_batches
     accuracy = correct / total
     # Calculate final IoU scores
-    mean_iou, class_iou = iou_meter.value()
-    return avg_loss, accuracy, mean_iou, class_iou
+    mean_iou, class_iou, mean_f1, class_f1 = iou_meter.value()
+    return avg_loss, accuracy, mean_iou, class_iou, mean_f1, class_f1
 
 def save_confusion_matrix(model, dataloader, device, save_path, class_names=None):
     """Generates and saves a confusion matrix heatmap"""
@@ -460,7 +465,9 @@ def train_model(model_name: str, config: Config):
         'train_loss': [],
         'val_loss': [],
         'val_acc': [],
-        'epoch_times': []
+        'epoch_times': [],
+        'val_miou': [],
+        'val_mf1': [],
     }
 
     start_time = time.time()
@@ -472,7 +479,7 @@ def train_model(model_name: str, config: Config):
         train_loss = train_epoch(model, train_loader, criterion, optimizer, config.DEVICE)
 
         # Validate
-        val_loss, val_acc, val_miou, val_class_iou = validate(model, val_loader, criterion, config.DEVICE, config.NUM_CLASSES)
+        val_loss, val_acc, val_miou, val_class_iou, val_mf1, val_class_f1 = validate(model, val_loader, criterion, config.DEVICE, config.NUM_CLASSES)
 
         epoch_time = time.time() - epoch_start
 
@@ -482,12 +489,14 @@ def train_model(model_name: str, config: Config):
         history['val_acc'].append(val_acc)
         history['val_miou'].append(val_miou)
         history['epoch_times'].append(epoch_time)
+        history['val_mf1'].append(val_mf1)
 
         print(f"Epoch {epoch:2d}/{config.EPOCHS} | "
               f"Train Loss: {train_loss:.4f} | "
               f"Val Loss: {val_loss:.4f} | "
               f"Val Acc: {val_acc:.4f} | "
               f"mIoU: {val_miou:.4f} | "
+              f"mF1: {val_mf1:.4f} | "
               f"Time: {epoch_time:.1f}s")
 
         # Save best model

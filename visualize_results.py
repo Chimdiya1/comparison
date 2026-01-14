@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 # Assuming your Config and Model classes are in the same directory or accessible
-# from train_comparison import Config, XBDTilesDataset, create_model
+from train_comparison import Config, XBDTilesDataset, create_model
 
 def colorize_mask(mask):
     """Converts a (H, W) label mask to an (H, W, 3) RGB image"""
