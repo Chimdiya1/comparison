@@ -1,0 +1,11 @@
+{
+  "model": "deeplabv3plus",
+  "total_parameters": 40357477,
+  "trainable_parameters": 40357477,
+  "epochs_trained": 14,
+  "total_training_time": 1401.108742237091,
+  "best_val_loss": 1.6925568948473249,
+  "best_val_acc": 0.7432699244421439,
+  "final_val_loss": 2.091976344244821,
+  "final_val_acc": 0.764345815764988
+}

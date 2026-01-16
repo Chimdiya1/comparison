@@ -1,0 +1,11 @@
+{
+  "model": "unet",
+  "total_parameters": 7764037,
+  "trainable_parameters": 7764037,
+  "epochs_trained": 20,
+  "total_training_time": 1803.9267072677612,
+  "best_val_loss": 1.7039484071731568,
+  "best_val_acc": 0.7920812189323196,
+  "final_val_loss": 1.7395638608932495,
+  "final_val_acc": 0.807100538873195
+}

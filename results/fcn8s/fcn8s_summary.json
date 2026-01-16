@@ -1,0 +1,11 @@
+{
+  "model": "fcn8s",
+  "total_parameters": 134293807,
+  "trainable_parameters": 134293807,
+  "epochs_trained": 12,
+  "total_training_time": 1287.786306142807,
+  "best_val_loss": 1.9395025219236102,
+  "best_val_acc": 0.7936023390173742,
+  "final_val_loss": 2.097595797947475,
+  "final_val_acc": 0.8059991773788169
+}
