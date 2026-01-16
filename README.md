@@ -107,8 +107,6 @@ Example `<model>_summary.json`:
 - **Parameters:** ~40.4M
 - **Key Feature:** ASPP module with atrous convolutions for multi-scale context
 
-See [MODEL_SUMMARY.md](MODEL_SUMMARY.md) for detailed architecture descriptions.
-
 ## Dataset
 
 - **Source:** xView2 Hurricane Harvey
@@ -126,15 +124,6 @@ See [MODEL_SUMMARY.md](MODEL_SUMMARY.md) for detailed architecture descriptions.
 - Pillow
 - CUDA (recommended for GPU training)
 
-## Training Time Estimates
-
-On a GPU (e.g., NVIDIA RTX 3080):
-- **UNet:** ~10-15 minutes per epoch
-- **FCN-8s:** ~15-20 minutes per epoch
-- **DeepLabV3+:** ~20-25 minutes per epoch
-
-Total training time per model: **3-5 hours** (with early stopping)
-
 ## Reproducibility
 
 All experiments use:
@@ -143,42 +132,5 @@ All experiments use:
 - **Identical data splits** from CSV files
 - **Same augmentation pipeline** for all models
 
-## Next Steps
 
-1. ✅ Model implementation complete
-2. ✅ Training script ready
-3. ⏳ Train all three models
-4. ⏳ Create evaluation script
-5. ⏳ Generate comparison visualizations
-6. ⏳ Write paper
 
-## Troubleshooting
-
-### Out of Memory Error
-Reduce batch size:
-```bash
-python assessment/train_comparison.py --model deeplabv3plus --batch-size 4
-```
-
-### Training Too Slow
-- Ensure GPU is being used (check `DEVICE` in output)
-- Reduce number of workers: modify `NUM_WORKERS` in `Config` class
-
-### Model Not Found
-Make sure you're in the project root directory and have activated the virtual environment.
-
-## Citation
-
-If you use this code, please cite:
-
-```bibtex
-@article{your_paper_2026,
-  title={Comparative Analysis of Semantic Segmentation Architectures for Building Damage Assessment from Satellite Imagery},
-  author={Your Name},
-  year={2026}
-}
-```
-
----
-
-**Last Updated:** January 2026
